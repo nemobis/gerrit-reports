@@ -20,7 +20,7 @@ def get_changes(gerrit_api_url, status, sortkey):
         sortkey_param = '+sortkey_before:%s' % sortkey
     else:
         sortkey_param = ''
-    params = '?q=status:%s' % status + sortkey_param+'&n=500'
+    params = '?q=status:%s' % status + sortkey_param+'&o=LABELS&o=DETAILED_LABELS'+'&n=500'
     opener = urllib2.build_opener()
     # Set a user agent to avoid an "Authentication required" error
     opener.addheaders = [('User-Agent', 'gerrit-reports')]
@@ -68,6 +68,8 @@ conn = sqlite3.connect(database_name)
 cursor = conn.cursor()
 
 for change in total_changes:
+    if not change[u'labels'][u'Code-Review']: 
+        change[u'labels'][u'Code-Review'][u'all'] = ''
     cursor.execute('''
     INSERT OR REPLACE INTO changesets
     (gc_number,
@@ -78,8 +80,9 @@ for change in total_changes:
      gc_subject,
      gc_created,
      gc_updated,
-     gc_owner)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+     gc_owner,
+     gc_codereview)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     ''', (change[u'_number'],
           change[u'change_id'],
           change[u'project'],
@@ -88,7 +91,8 @@ for change in total_changes:
           change[u'subject'],
           change[u'created'],
           change[u'updated'],
-          change[u'owner'][u'name']))
+          change[u'owner'][u'name'],
+          change[u'labels'][u'Code-Review'][u'all']))
 
 cursor.close()
 conn.commit()
